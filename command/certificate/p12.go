@@ -68,6 +68,10 @@ multiple CAs or intermediates.`,
 				Name:  "password-file",
 				Usage: `The path to the <file> containing the password to encrypt the .p12 file.`,
 			},
+			cli.StringFlag{
+				Name:  "friendly-name",
+				Usage: `The friendly <name> provided to the .p12 trust store (defaults to "<subject> - <fingerprint>").`,
+			},
 			flags.NoPassword,
 			flags.Force,
 			flags.Insecure,
@@ -157,10 +161,16 @@ func p12Action(ctx *cli.Context) error {
 	} else {
 		// If we have only --ca flags, we're making a trust store
 		var certsWithFriendlyNames []pkcs12.TrustStoreEntry
+		var friendlyName string
 		for _, cert := range x509CAs {
+			if ctx.String("friendly-name") != "" {
+				friendlyName = ctx.String("friendly-name")
+			} else {
+				friendlyName = fmt.Sprintf("%s - %s", cert.Subject.String(), x509util.Fingerprint(cert))
+			}
 			certsWithFriendlyNames = append(certsWithFriendlyNames, pkcs12.TrustStoreEntry{
 				Cert:         cert,
-				FriendlyName: fmt.Sprintf("%s - %s", cert.Subject.String(), x509util.Fingerprint(cert)),
+				FriendlyName: friendlyName,
 			})
 		}
 		pkcs12Data, err = pkcs12.EncodeTrustStoreEntries(rand.Reader, certsWithFriendlyNames, password)
